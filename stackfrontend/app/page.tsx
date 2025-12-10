@@ -26,12 +26,12 @@ export default async function Home(props: {
     <main className="min-h-screen bg-background text-foreground p-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-12">
-          <h1 className="text-5xl font-bold text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-            TechAnon
+          <h1 className="text-5xl font-bold text-primary bg-clip-text text-transparent bg-white">
+            YOURSTACK
           </h1>
           <Link
             href="/create"
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-accent text-white font-bold shadow-lg hover:shadow-primary/50 transform hover:-translate-y-1 transition-all duration-300"
+            className="px-6 py-3 rounded-xl border-white border-2  text-white font-bold shadow-lg "
           >
             Write a Post
           </Link>
@@ -43,7 +43,7 @@ export default async function Home(props: {
           <div className="flex gap-4 overflow-x-auto pb-2">
             <Link
               href="/"
-              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${!category ? 'bg-primary text-white' : 'bg-card hover:bg-primary/20'}`}
+              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${!category ? 'border-1 text-white' : 'bg-card hover:bg-primary/20'}`}
             >
               All
             </Link>
@@ -51,7 +51,7 @@ export default async function Home(props: {
               <Link
                 key={cat}
                 href={`/?category=${cat}&sort=${sort}`}
-                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${category === cat ? 'bg-primary text-white' : 'bg-card hover:bg-primary/20'}`}
+                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${category === cat ? ' border-1  text-white' : 'bg-card hover:bg-primary/20'}`}
               >
                 {cat}
               </Link>

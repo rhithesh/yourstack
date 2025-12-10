@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 
@@ -27,18 +28,67 @@ export async function createPost(formData: FormData) {
 }
 
 export async function votePost(postId: number, type: 'up' | 'down') {
-    if (type === 'up') {
-        await prisma.post.update({
-            where: { id: postId },
-            data: { upvotes: { increment: 1 } },
-        });
-    } else {
-        await prisma.post.update({
-            where: { id: postId },
-            data: { downvotes: { increment: 1 } },
-        });
+    const cookieStore = await cookies();
+    const sessionId = cookieStore.get('session_id')?.value;
+
+    if (!sessionId) {
+        // Should be handled by middleware, but just in case
+        return;
     }
+
+    const existingVote = await prisma.vote.findUnique({
+        where: {
+            postId_sessionId: {
+                postId,
+                sessionId,
+            },
+        },
+    });
+
+    console.log('Existing Vote:', existingVote);
+
+    if (existingVote) {
+        if (existingVote.type === type) {
+            // User already voted this way, do nothing (or toggle off if desired)
+            return;
+        } else {
+            // Change vote
+            await prisma.$transaction([
+                prisma.vote.update({
+                    where: { id: existingVote.id },
+                    data: { type },
+                }),
+                prisma.post.update({
+                    where: { id: postId },
+                    data: {
+                        upvotes: type === 'up' ? { increment: 1 } : { decrement: 1 },
+                        downvotes: type === 'down' ? { increment: 1 } : { decrement: 1 },
+                    },
+                }),
+            ]);
+        }
+    } else {
+        // New vote
+        await prisma.$transaction([
+            prisma.vote.create({
+                data: {
+                    postId,
+                    sessionId,
+                    type,
+                },
+            }),
+            prisma.post.update({
+                where: { id: postId },
+                data: {
+                    upvotes: type === 'up' ? { increment: 1 } : undefined,
+                    downvotes: type === 'down' ? { increment: 1 } : undefined,
+                },
+            }),
+        ]);
+    }
+
     revalidatePath('/');
+    revalidatePath(`/post/${postId}`);
 }
 
 export async function addComment(formData: FormData) {

@@ -11,8 +11,8 @@ export default function DailyTechUpdate() {
     const update = updates[Math.floor(Math.random() * updates.length)];
 
     return (
-        <div className="mb-12 p-1 rounded-2xl bg-gradient-to-r from-primary via-accent to-primary animate-gradient-x">
-            <div className="bg-card rounded-xl p-6 text-center">
+        <div className="mb-12 p-1 rounded-2xl bg-gradient-to-r from-primary via-accent to-primary  animate-gradient-x">
+            <div className="bg-card h-screen rounded-xl p-6 text-center">
                 <h2 className="text-xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
                     Daily Tech Update
                 </h2>

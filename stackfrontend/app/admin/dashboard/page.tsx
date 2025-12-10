@@ -20,7 +20,7 @@ export default async function AdminDashboard() {
         <div className="min-h-screen bg-background text-foreground p-8">
             <div className="max-w-6xl mx-auto">
                 <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-4xl font-bold text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
+                    <h1 className="text-4xl font-bold text-primary">
                         Moderation Dashboard
                     </h1>
                     <form action={logout}>
