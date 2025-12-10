@@ -2,6 +2,7 @@ coderabbit.yaml# yaml-language-server: $schema=https://coderabbit.ai/integration
 language: "en-US"
 early_access: true
 reviews:
+  profile: assertive
   request_changes_workflow: false
   high_level_summary: true
   poem: true
