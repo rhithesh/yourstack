@@ -10,8 +10,6 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.1",
-    "@remotion/cli": "4.0.386",
-    "@remotion/player": "^4.0.386",
     "next": "16.0.8",
     "react": "19.2.1",
     "react-dom": "19.2.1",
