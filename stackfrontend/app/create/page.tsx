@@ -4,7 +4,7 @@ export default function CreatePost() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-4">
             <div className="w-full max-w-2xl bg-card p-8 rounded-2xl shadow-2xl border border-border">
-                <h1 className="text-3xl font-bold mb-6 text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
+                <h1 className="text-3xl font-bold mb-6 text-primary">
                     Share Your Knowledge
                 </h1>
                 <form action={createPost} className="space-y-6">
@@ -62,7 +62,7 @@ export default function CreatePost() {
 
                     <button
                         type="submit"
-                        className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-primary to-accent text-white font-bold text-lg shadow-lg hover:shadow-primary/50 transform hover:-translate-y-1 transition-all duration-300"
+                        className="w-full py-4 px-6 rounded-xl border-2 border-primary text-primary font-bold text-lg hover:bg-primary hover:text-background transition-all duration-300"
                     >
                         Submit for Review
                     </button>

@@ -47,7 +47,7 @@ export default async function PostPage(props: { params: Promise<{ id: string }> 
         <main className="min-h-screen bg-background text-foreground p-8">
             <div className="max-w-4xl mx-auto">
                 <Link href="/" className="text-primary hover:underline mb-8 inline-block">
-                    &larr; Back to Home
+                    &larr;  Home
                 </Link>
 
                 <article className="bg-card p-8 rounded-2xl border border-border shadow-2xl mb-12">

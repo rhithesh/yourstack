@@ -74,7 +74,7 @@ export default function CommentSection({ comments, postId }: { comments: Comment
                 />
                 <button
                     type="submit"
-                    className="px-6 py-3 rounded-xl bg-primary text-white font-bold shadow-lg hover:shadow-primary/50 transition-all"
+                    className="px-6 py-3 rounded-xl border-2 border-white text-white font-bold shadow-lg "
                 >
                     Post Comment
                 </button>

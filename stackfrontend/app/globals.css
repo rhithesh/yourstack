@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  /* Dark Theme by Default */
-  --background: #050510;
+  /* Black and White Theme */
+  --background: #000000;
   --foreground: #ffffff;
-  --card: #0f1020;
-  --border: #1f2937;
-  --primary: #8b5cf6; /* Violet */
-  --accent: #ec4899; /* Pink */
-  --input: #1a1b2e;
-  --input-border: #2d3748;
-  --muted-foreground: #9ca3af;
+  --card: #111111;
+  --border: #333333;
+  --primary: #ffffff;
+  --accent: #888888;
+  --input: #111111;
+  --input-border: #333333;
+  --muted-foreground: #888888;
 }
 
 @theme inline {
@@ -23,14 +23,23 @@
   --color-input: var(--input);
   --color-input-border: var(--input-border);
   --color-muted-foreground: var(--muted-foreground);
+  --font-bitcount: var(--font-bitcount);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  background-image:
-    radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.15), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(236, 72, 153, 0.15), transparent 25%);
   min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-bitcount), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
