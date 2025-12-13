@@ -4,6 +4,49 @@ import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import nodemailer from 'nodemailer';
+
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: true,
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+    },
+});
+
+export async function subscribeToNewsletter(formData: FormData) {
+    const email = formData.get('email') as string;
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error('Invalid email address');
+    }
+
+    try {
+        await prisma.subscriber.upsert({
+            where: { email },
+            update: { isActive: true },
+            create: { email },
+        });
+
+        // Send welcome email
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || process.env.SMTP_USER,
+            to: email,
+            subject: 'Welcome to TechAnon Newsletter',
+            html: `
+                <h1>Welcome to TechAnon!</h1>
+                <p>You have successfully subscribed to our daily tech newsletter.</p>
+                <p>You will receive updates every 4 days.</p>
+            `,
+        });
+
+    } catch (error) {
+        console.error('Subscription error:', error);
+        throw new Error('Failed to subscribe');
+    }
+}
 
 export async function createPost(formData: FormData) {
     const title = formData.get('title') as string;

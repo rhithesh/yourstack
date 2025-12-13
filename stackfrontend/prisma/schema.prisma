@@ -23,6 +23,13 @@ model Post {
   votes       Vote[]
 }
 
+model Subscriber {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  isActive  Boolean  @default(true)
+}
+
 model Vote {
   id        Int      @id @default(autoincrement())
   postId    Int
