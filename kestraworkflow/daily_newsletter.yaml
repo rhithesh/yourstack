@@ -1,0 +1,201 @@
+id: daily_newsletter
+namespace: company.team
+
+triggers:
+  - id: webhook
+    type: io.kestra.plugin.core.trigger.Webhook
+    key: daily-newsletter
+
+inputs:
+  - id: platforms
+    type: ARRAY
+    itemType: STRING
+    defaults: ["dev.to", "hackernews", "techcrunch"]
+
+  - id: creators
+    type: ARRAY
+    itemType: STRING
+    required: false
+  - id: name
+    type: STRING
+    required: true
+
+  - id: email
+    type: STRING
+    required: true
+
+tasks:
+  - id: fetch_platforms
+    type: io.kestra.plugin.core.flow.Parallel
+    tasks:
+      - id: dev_if
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ inputs.platforms contains 'dev.to' }}"
+        then:
+          - id: fetch_devto
+            type: io.kestra.plugin.core.http.Request
+            uri: https://dev.to/api/articles?top=7&per_page=5
+
+      - id: hn_if
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ inputs.platforms contains 'hackernews' }}"
+        then:
+          - id: fetch_hn_ids
+            type: io.kestra.plugin.core.http.Request
+            uri: https://hacker-news.firebaseio.com/v0/topstories.json
+
+          - id: fetch_hn_items
+            type: io.kestra.plugin.scripts.node.Script
+            inputFiles:
+              ids.json: "{{ outputs.fetch_hn_ids.body }}"
+            beforeCommands:
+              - npm install node-fetch@2
+            outputFiles:
+              - hn.txt
+            script: |
+              const fs = require("fs");
+              const fetch = require("node-fetch");
+              const ids = JSON.parse(fs.readFileSync("ids.json"));
+              const top = ids.slice(0, 5);
+
+              (async () => {
+                const items = await Promise.all(
+                  top.map(id =>
+                    fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
+                      .then(r => r.json())
+                  )
+                );
+                fs.writeFileSync("hn.txt", JSON.stringify(items, null, 2));
+              })();
+
+      - id: techcrunch_if
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ inputs.platforms contains 'techcrunch' }}"
+        then:
+          - id: fetch_techcrunch
+            type: io.kestra.plugin.core.http.Request
+            uri: https://techcrunch.com/feed/
+
+  - id: ai_parallel
+    type: io.kestra.plugin.core.flow.Parallel
+    tasks:
+      - id: ai_newsletter
+        type: io.kestra.plugin.ai.agent.AIAgent
+        systemMessage: |
+          You are an expert tech editor.
+
+          IMPORTANT RULES:
+          - Output ONLY valid HTML
+          - DO NOT use Markdown
+          - DO NOT include [/INST] or any system tokens
+          - Do NOT use --- separators
+          - Use <h2>, <h3>, <p>, <ul>, <li>, <a>
+          - Do NOT wrap content in <del>, <s>, or <strike>
+
+          Your job:
+          - Identify trending themes
+          - Prefer content from requested creators
+          - Remove duplicates across platforms
+          - Ignore low-quality or irrelevant posts
+          - Produce a clean newsletter
+        prompt: |
+          DEV.TO:
+          {{ outputs.fetch_devto.body | default('[]') }}
+
+          HACKER NEWS:
+          {{ outputs.fetch_hn_items is defined
+            ? read(outputs.fetch_hn_items.outputFiles['hn.txt'])
+            : '[]'
+          }}
+
+          TECHCRUNCH:
+          {{ outputs.fetch_techcrunch.body | default('') }}
+
+          If any platform has no content please mention it at the end
+        provider:
+          type: io.kestra.plugin.ai.provider.OpenRouter
+          apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+          modelName: google/gemini-2.5-flash-preview-09-2025
+
+      - id: ai_summary
+        type: io.kestra.plugin.ai.agent.AIAgent
+        systemMessage: |
+          You are a senior tech analyst.
+
+          RULES:
+          - Output ONLY valid HTML
+          - Keep it concise
+          - Focus on business impact
+          - No Markdown
+
+          Your job:
+          - Summarize today’s tech news in under 150 words
+          - Highlight 3 key trends
+          - Explain why they matter
+          -SHOULD BE BASED ON USERS STYLE 
+          -SHOULD BE BASED ON USERS INTREST 
+          -explicitly mention the links you have used to write the summary
+
+        prompt: |
+          Use the following sources:
+
+            STYLE:PROFESSIONAL
+            INTRESTS:SYSTEMS ENGINNEERING, AI
+
+          DEV.TO:
+          {{ outputs.fetch_devto.body | default('[]') }}
+
+          HACKER NEWS:
+          {{ outputs.fetch_hn_items is defined
+            ? read(outputs.fetch_hn_items.outputFiles['hn.txt'])
+            : '[]'
+          }}
+
+          TECHCRUNCH:
+          {{ outputs.fetch_techcrunch.body | default('') }}
+        provider:
+          type: io.kestra.plugin.ai.provider.OpenRouter
+          apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+          modelName: google/gemini-2.5-flash-preview-09-2025
+
+  - id: finalDraft
+    type: io.kestra.plugin.ai.agent.AIAgent
+    systemMessage: |
+      Please merge the data to one single HTML DO NOT change anything else.
+      OUTPUT MUST BE ONLY HTML
+
+    prompt: |
+      The email should be in this format
+
+      Hi {{inputs.name}},
+
+      START GIST
+      {{outputs.ai_summary.textOutput}}
+
+      ---------------------------
+      Executive SUMMARY
+      {{outputs.ai_newsletter.textOutput}}
+    provider:
+      type: io.kestra.plugin.ai.provider.OpenRouter
+      apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+      modelName: mistralai/ministral-8b-2512
+
+  - id: send_email
+    type: io.kestra.plugin.notifications.mail.MailSend
+    from: rhithesh1947@gmail.com
+    to: "{{ inputs.email }}"
+    username: "{{ kv('SMTP_USER') }}"
+    password: "{{ kv('SMTP_PASS') }}"
+    host: smtp.gmail.com
+    port: 465
+    subject: "Your Daily AI Newsletter BY SUBSTACK"
+    htmlTextContent: |
+
+      {{outputs.ai_summary.textOutput}}
+
+      {{outputs.ai_newsletter.textOutput}}
+
+
+
+       <hr />
+       <p>Sent via Kestra</p>
