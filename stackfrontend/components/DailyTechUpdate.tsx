@@ -1,3 +1,5 @@
+import NewsletterSignup from "./NewsletterSign";
+
 export default function DailyTechUpdate() {
     const updates = [
         "AI models are getting smaller and faster! Distillation is the new trend.",
@@ -12,13 +14,12 @@ export default function DailyTechUpdate() {
 
     return (
         <div className="mb-12 p-1 rounded-2xl bg-gradient-to-r from-primary via-accent to-primary  animate-gradient-x">
-            <div className="bg-card h-screen rounded-xl p-6 text-center">
+            <div className="bg-card h-[67vh] rounded-xl p-6 text-center">
+                <NewsletterSignup />
                 <h2 className="text-xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
                     Daily Tech Update
                 </h2>
-                <p className="text-lg text-foreground font-medium">
-                    {update}
-                </p>
+
             </div>
         </div>
     );
