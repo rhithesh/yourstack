@@ -16,8 +16,17 @@ inputs:
     type: ARRAY
     itemType: STRING
     required: false
+  - id: tone
+    type: STRING
+    required: false
+
   - id: name
     type: STRING
+    required: true
+
+  - id: intrests
+    type: ARRAY
+    itemType: STRING
     required: true
 
   - id: email
@@ -76,109 +85,204 @@ tasks:
             type: io.kestra.plugin.core.http.Request
             uri: https://techcrunch.com/feed/
 
-  - id: ai_parallel
+  - id: ai_clean_parallel
     type: io.kestra.plugin.core.flow.Parallel
     tasks:
-      - id: ai_newsletter
-        type: io.kestra.plugin.ai.agent.AIAgent
-        systemMessage: |
-          You are an expert tech editor.
+      - id: clean_devto_if
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ inputs.platforms contains 'dev.to' }}"
+        then:
+          - id: ai_clean_devto
+            type: io.kestra.plugin.ai.agent.AIAgent
+            systemMessage: |
+              You are a content curator for a tech newsletter.
+              Extract relevant articles about systems engineering, AI, machine learning.
+              Format: "Title: [title]\nDescription: [desc]\nURL: [url]\n\n"
+            prompt: |
+              Filter these Dev.to articles for systems engineering and AI content:
+              {{ outputs.fetch_devto.body | jq('.') }}
+            provider:
+              type: io.kestra.plugin.ai.provider.OpenRouter
+              apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+              modelName: google/gemini-2.5-flash-preview-09-2025
 
-          IMPORTANT RULES:
-          - Output ONLY valid HTML
-          - DO NOT use Markdown
-          - DO NOT include [/INST] or any system tokens
-          - Do NOT use --- separators
-          - Use <h2>, <h3>, <p>, <ul>, <li>, <a>
-          - Do NOT wrap content in <del>, <s>, or <strike>
+      - id: clean_hn_if
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ inputs.platforms contains 'hackernews' }}"
+        then:
+          - id: ai_clean_hn
+            type: io.kestra.plugin.ai.agent.AIAgent
+            systemMessage: |
+              You are a content curator.
+              Extract relevant HackerNews stories about systems engineering and AI.
+              Format: "Title: [title]\nURL: [url]\nScore: [score]\n\n"
+            prompt: |
+              Filter these HackerNews stories for systems engineering and AI:
+              {{ read(outputs.fetch_hn_items.outputFiles['hn.txt']) }}
+            provider:
+              type: io.kestra.plugin.ai.provider.OpenRouter
+              apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+              modelName: google/gemini-2.5-flash-preview-09-2025
 
-          Your job:
-          - Identify trending themes
-          - Prefer content from requested creators
-          - Remove duplicates across platforms
-          - Ignore low-quality or irrelevant posts
-          - Produce a clean newsletter
-        prompt: |
-          DEV.TO:
-          {{ outputs.fetch_devto.body | default('[]') }}
+      - id: clean_techcrunch_if
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ inputs.platforms contains 'techcrunch' }}"
+        then:
+          - id: parse_techcrunch
+            type: io.kestra.plugin.scripts.python.Script
+            docker:
+              image: python:3.11-slim
+            beforeCommands:
+              - pip install feedparser
+            outputFiles:
+              - techcrunch_raw.txt
+            script: |
+              import feedparser
+              import json
 
-          HACKER NEWS:
-          {{ outputs.fetch_hn_items is defined
-            ? read(outputs.fetch_hn_items.outputFiles['hn.txt'])
-            : '[]'
-          }}
+              rss_content = '''{{ outputs.fetch_techcrunch.body }}'''
+              feed = feedparser.parse(rss_content)
 
-          TECHCRUNCH:
-          {{ outputs.fetch_techcrunch.body | default('') }}
+              articles = []
+              for entry in feed.entries[:10]:
+                  articles.append({
+                      'title': entry.get('title', 'N/A'),
+                      'summary': entry.get('summary', 'N/A'),
+                      'link': entry.get('link', 'N/A')
+                  })
 
-          If any platform has no content please mention it at the end
-        provider:
-          type: io.kestra.plugin.ai.provider.OpenRouter
-          apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
-          modelName: google/gemini-2.5-flash-preview-09-2025
+              with open('techcrunch_raw.txt', 'w') as f:
+                  f.write(json.dumps(articles, indent=2))
 
-      - id: ai_summary
-        type: io.kestra.plugin.ai.agent.AIAgent
-        systemMessage: |
-          You are a senior tech analyst.
+          - id: ai_clean_techcrunch
+            type: io.kestra.plugin.ai.agent.AIAgent
+            systemMessage: |
+              You are a content curator.
+              Extract TechCrunch articles about AI and infrastructure.
+              Format: "Title: [title]\nDescription: [desc]\nURL: [url]\n\n"
+            prompt: |
+              Filter these TechCrunch articles for AI and systems engineering:
+              {{ read(outputs.parse_techcrunch.outputFiles['techcrunch_raw.txt']) }}
+            provider:
+              type: io.kestra.plugin.ai.provider.OpenRouter
+              apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+              modelName: google/gemini-2.5-flash-preview-09-2025
 
-          RULES:
-          - Output ONLY valid HTML
-          - Keep it concise
-          - Focus on business impact
-          - No Markdown
+  - id: ingest_all
+    type: io.kestra.plugin.core.flow.Parallel
+    tasks:
+      - id: ingest_devto_if
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ inputs.platforms contains 'dev.to' }}"
+        then:
+          - id: ingest_devto
+            type: io.kestra.plugin.ai.rag.IngestDocument
+            provider:
+              type: io.kestra.plugin.ai.provider.OpenRouter
+              apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+              modelName: "openai/text-embedding-3-small"
+            embeddings:
+              type: io.kestra.plugin.ai.embeddings.KestraKVStore
+              kvName: "newsletter-embeddings"
+            fromDocuments:
+              - content: "{{ outputs.ai_clean_devto.textOutput }}"
+                metadata:
+                  source: dev.to
 
-          Your job:
-          - Summarize today’s tech news in under 150 words
-          - Highlight 3 key trends
-          - Explain why they matter
-          -SHOULD BE BASED ON USERS STYLE 
-          -SHOULD BE BASED ON USERS INTREST 
-          -explicitly mention the links you have used to write the summary
+      - id: ingest_hn_if
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ inputs.platforms contains 'hackernews' }}"
+        then:
+          - id: ingest_hn
+            type: io.kestra.plugin.ai.rag.IngestDocument
+            provider:
+              type: io.kestra.plugin.ai.provider.OpenRouter
+              apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+              modelName: "openai/text-embedding-3-small"
+            embeddings:
+              type: io.kestra.plugin.ai.embeddings.KestraKVStore
+              kvName: "newsletter-embeddings"
+            fromDocuments:
+              - content: "{{ outputs.ai_clean_hn.textOutput }}"
+                metadata:
+                  source: hackernews
 
-        prompt: |
-          Use the following sources:
+      - id: ingest_techcrunch_if
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ inputs.platforms contains 'techcrunch' }}"
+        then:
+          - id: ingest_techcrunch
+            type: io.kestra.plugin.ai.rag.IngestDocument
+            provider:
+              type: io.kestra.plugin.ai.provider.OpenRouter
+              apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+              modelName: "openai/text-embedding-3-small"
+            embeddings:
+              type: io.kestra.plugin.ai.embeddings.KestraKVStore
+              kvName: "newsletter-embeddings"
+            fromDocuments:
+              - content: "{{ outputs.ai_clean_techcrunch.textOutput }}"
+                metadata:
+                  source: techcrunch
 
-            STYLE:PROFESSIONAL
-            INTRESTS:SYSTEMS ENGINNEERING, AI
+  - id: ai_summary
+    type: io.kestra.plugin.ai.rag.ChatCompletion
+    chatProvider:
+      type: io.kestra.plugin.ai.provider.OpenRouter
+      apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+      modelName: "anthropic/claude-3.5-sonnet"
+    embeddingProvider:
+      type: io.kestra.plugin.ai.provider.OpenRouter
+      apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+      modelName: "openai/text-embedding-3-small"
+    embeddings:
+      type: io.kestra.plugin.ai.embeddings.KestraKVStore
+      kvName: "newsletter-embeddings"
+    systemMessage: |
+      Create a 150-word summary of today's top tech trends in HTML.
+      Focus on intrests relevent to {{inputs.intrests | join(', ')}}.
+      KEEP the TONE {{inputs.tone}}
+    prompt: "What are the key developments today in systems engineering and AI?"
 
-          DEV.TO:
-          {{ outputs.fetch_devto.body | default('[]') }}
-
-          HACKER NEWS:
-          {{ outputs.fetch_hn_items is defined
-            ? read(outputs.fetch_hn_items.outputFiles['hn.txt'])
-            : '[]'
-          }}
-
-          TECHCRUNCH:
-          {{ outputs.fetch_techcrunch.body | default('') }}
-        provider:
-          type: io.kestra.plugin.ai.provider.OpenRouter
-          apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
-          modelName: google/gemini-2.5-flash-preview-09-2025
-
-  - id: finalDraft
+  - id: ai_newsletter
     type: io.kestra.plugin.ai.agent.AIAgent
     systemMessage: |
-      Please merge the data to one single HTML DO NOT change anything else.
-      OUTPUT MUST BE ONLY HTML
+      You are an expert tech editor.
 
+      IMPORTANT RULES:
+      - Output ONLY valid HTML
+      - Use <h2>, <h3>, <p>, <ul>, <li>, <a href="...">
+      - ALL article titles MUST be clickable links
+      - DO NOT use Markdown
+
+      Your job:
+      - Use the cleaned/filtered content as guidance
+      - But pull the actual URLs from the original data
+      - Create a comprehensive newsletter with working links
     prompt: |
-      The email should be in this format
+      Create a newsletter combining these sources:
 
-      Hi {{inputs.name}},
+      CLEANED CONTENT (use this to know WHAT to include):
+      DEV.TO (filtered): {{ outputs.ai_clean_devto.textOutput | default('None') }}
+      HACKER NEWS (filtered): {{ outputs.ai_clean_hn.textOutput | default('None') }}
+      TECHCRUNCH (filtered): {{ outputs.ai_clean_techcrunch.textOutput | default('None') }}
 
-      START GIST
-      {{outputs.ai_summary.textOutput}}
+      ORIGINAL DATA (use this to get the URLs):
+      DEV.TO (with URLs):
+      {{ outputs.fetch_devto.body | default('[]') | jq('[.[] | {title: .title, url: .url, description: .description, tags: .tags}]') }}
 
-      ---------------------------
-      Executive SUMMARY
-      {{outputs.ai_newsletter.textOutput}}
+      HACKER NEWS (with URLs):
+      {{ outputs.fetch_hn_items is defined ? read(outputs.fetch_hn_items.outputFiles['hn.txt']) : 'No content' }}
+
+      TECHCRUNCH (with URLs):
+      {{ outputs.parse_techcrunch is defined ? read(outputs.parse_techcrunch.outputFiles['techcrunch_raw.txt']) : 'No content' }}
+
+      Match articles from cleaned content with original data to get URLs.
+      Format: <h3><a href="[URL]">[Title]</a></h3><p>[Description]</p>
     provider:
       type: io.kestra.plugin.ai.provider.OpenRouter
       apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
-      modelName: mistralai/ministral-8b-2512
+      modelName: google/gemini-2.5-flash-preview-09-2025
 
   - id: send_email
     type: io.kestra.plugin.notifications.mail.MailSend
@@ -190,12 +294,17 @@ tasks:
     port: 465
     subject: "Your Daily AI Newsletter BY SUBSTACK"
     htmlTextContent: |
-
-      {{outputs.ai_summary.textOutput}}
-
-      {{outputs.ai_newsletter.textOutput}}
+      <p>Hello {{inputs.name}}</p
 
 
+        <h3>
+       {{outputs.ai_summary.textOutput}}
+        </h3>
 
-       <hr />
-       <p>Sent via Kestra</p>
+
+       {{outputs.ai_newsletter.textOutput}}
+
+
+
+        <hr />
+        <p>Sent via Kestra</p>
