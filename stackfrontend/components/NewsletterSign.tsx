@@ -183,21 +183,21 @@ export default function NewsletterSignup() {
                 <div>
                     <h2>✅ You're subscribed!</h2>
 
-                    <p><strong>Platforms:</strong></p>
-                    <ul>
-                        {platforms.map((p) => (
-                            <li key={p}>{p}</li>
-                        ))}
-                    </ul>
+                    <p>
+                        You’ll now receive <strong>curated tech updates</strong> from{' '}
+                        <strong>{platforms.join(', ')}</strong>, focused on{' '}
+                        <strong>{interests.join(', ')}</strong>.
+                    </p>
 
-                    <p><strong>Interests:</strong></p>
-                    <ul>
-                        {interests.map((i) => (
-                            <li key={i}>{i}</li>
-                        ))}
-                    </ul>
+                    <p>
+                        The content will be delivered in a{' '}
+                        <strong>{style?.replace('_', ' ').toLowerCase()}</strong> tone —
+                        tailored to keep things engaging and easy to read.
+                    </p>
 
-                    <p><strong>Style:</strong> {style?.replace('_', ' ')}</p>
+                    <p>
+                        Check your inbox soon. Your first update is on its way 🚀
+                    </p>
                 </div>
             )}
 
