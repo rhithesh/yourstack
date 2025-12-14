@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.1",
+    "@react-email/render": "^2.0.0",
     "next": "16.0.8",
+    "nodemailer": "^7.0.11",
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "remotion": "4.0.386"
@@ -19,6 +21,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "^7.0.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
