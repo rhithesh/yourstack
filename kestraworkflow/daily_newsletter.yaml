@@ -225,6 +225,24 @@ tasks:
                 metadata:
                   source: techcrunch
 
+  # - id: rag_summary
+  #   type: io.kestra.plugin.ai.rag.ChatCompletion
+  #   chatProvider:
+  #     type: io.kestra.plugin.ai.provider.OpenRouter
+  #     apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+  #     modelName: "anthropic/claude-3.5-sonnet"
+  #   embeddingProvider:
+  #     type: io.kestra.plugin.ai.provider.OpenRouter
+  #     apiKey: "{{ kv('OPEN_ROUTER_API_KEY') }}"
+  #     modelName: "openai/text-embedding-3-small"
+  #   embeddings:
+  #     type: io.kestra.plugin.ai.embeddings.KestraKVStore
+  #     kvName: "newsletter-embeddings"
+  #   systemMessage: |
+  #     Create a 150-word summary of today's top tech trends in HTML.
+  #     Focus on systems engineering and AI.
+  #   prompt: "What are the key developments today in systems engineering and AI?"
+
   - id: ai_summary
     type: io.kestra.plugin.ai.rag.ChatCompletion
     chatProvider:
@@ -294,12 +312,12 @@ tasks:
     port: 465
     subject: "Your Daily AI Newsletter BY SUBSTACK"
     htmlTextContent: |
-      <p>Hello {{inputs.name}}</p
+      <h1>Hello {{inputs.name}}</h1>
 
 
-        <h3>
+        <p>
        {{outputs.ai_summary.textOutput}}
-        </h3>
+        <p>
 
 
        {{outputs.ai_newsletter.textOutput}}

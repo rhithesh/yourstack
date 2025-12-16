@@ -86,8 +86,8 @@ export async function POST(request: Request) {
             formData.append('platforms', JSON.stringify(platforms));
             // Map 'interests' to 'intrests' key as expected by Kestra
             formData.append('intrests', JSON.stringify(interests));
-            // Map 'style' to 'tone'
-            formData.append('tone', style.toLowerCase());
+            // Map 'style' to 'tone' - user requested uppercase (e.g. FUNNY)
+            formData.append('tone', style.toUpperCase());
 
             console.log('Triggering Kestra workflow for:', email);
 
