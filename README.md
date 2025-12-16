@@ -13,7 +13,6 @@ Active Development
 - **Database:** [PostgreSQL](https://www.postgresql.org/)
 - **ORM:** [Prisma](https://www.prisma.io/)
 - **Email:** [Nodemailer](https://nodemailer.com/) & [React Email](https://react.email/)
-- **Video/Media:** [Remotion](https://www.remotion.dev/)
 
 ## ✨ Features
 
